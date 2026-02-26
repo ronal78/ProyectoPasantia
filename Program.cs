@@ -22,7 +22,7 @@ namespace PasantiaTI1
                 app.UseSwaggerUI();
             }
 
-            // Configure the HTTP request pipeline.
+            // Configurate the HTTP request pipeline
 
             app.UseHttpsRedirection();
 
