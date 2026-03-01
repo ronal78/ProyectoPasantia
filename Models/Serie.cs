@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace PasantiaTI1.Models
-{ 
-        public class Serie
+{
+    
+    public class Serie
         {
             public int Id { get; set; }
             public required string Titulo { get; set; }

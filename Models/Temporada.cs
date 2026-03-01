@@ -2,7 +2,7 @@
 {
     public class Temporada
     {
-        public int Numero { get; set; }
+        public int temporada { get; set; }
         public int Episodios { get; set; }
     }
 }

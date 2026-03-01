@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using PasantiaTI.Models;
 using PasantiaTI1.Models;
 using System.Collections.Generic;
@@ -10,7 +11,14 @@ namespace PasantiaTI1.Controllers
     [ApiController]
     public class SeriesController : ControllerBase
     {
-        // Lista estática que simula una "base de datos" en memoria
+        private readonly ILogger<SeriesController> _logger;
+
+        public SeriesController(ILogger<SeriesController> logger)
+        {
+            _logger = logger;
+        }
+
+        // Lista de series en memoria (simula base de datos)
         private static List<Serie> series = new()
         {
             new Serie
@@ -21,16 +29,15 @@ namespace PasantiaTI1.Controllers
                 AnioEstreno = 2017,
                 Genero = "Drama",
                 Activa = true,
-                //Lista de temporadas y episodios
                 TemporadasEpisodios = new List<Temporada>
                 {
-                    new Temporada { Numero = 1, Episodios = 18 },
-                    new Temporada { Numero = 2, Episodios = 18 },
-                    new Temporada { Numero = 3, Episodios = 20 },
-                    new Temporada { Numero = 4, Episodios = 20 },
-                    new Temporada { Numero = 5, Episodios = 18 },
-                    new Temporada { Numero = 6, Episodios = 18 },
-                    new Temporada { Numero = 7, Episodios = 10 },
+                    new Temporada { temporada = 1, Episodios = 18 },
+                    new Temporada { temporada = 2, Episodios = 18 },
+                    new Temporada { temporada = 3, Episodios = 20 },
+                    new Temporada { temporada = 4, Episodios = 20 },
+                    new Temporada { temporada = 5, Episodios = 18 },
+                    new Temporada { temporada = 6, Episodios = 18 },
+                    new Temporada { temporada = 7, Episodios = 10 },
                 }
             },
             new Serie
@@ -43,77 +50,147 @@ namespace PasantiaTI1.Controllers
                 Activa = true,
                 TemporadasEpisodios = new List<Temporada>
                 {
-                    new Temporada { Numero = 1, Episodios = 6 },
-                    new Temporada { Numero = 2, Episodios = 6 },
+                    new Temporada { temporada = 1, Episodios = 6 },
+                    new Temporada { temporada = 2, Episodios = 6 },
                 }
             }
         };
 
         // GET /series
-        // Devuelve todas las series
+        // Devuelve todas las series o filtra por estado Activa si se pasa el query ?activa=true/false
         [HttpGet]
-        public IActionResult Get() => Ok(series);
+        public IActionResult Get([FromQuery] bool? activa)
+        {
+            IEnumerable<Serie> resultado = series;
+
+            if (activa.HasValue)
+                resultado = resultado.Where(s => s.Activa == activa.Value);
+
+            return Ok(resultado);
+        }
 
         // GET /series/{id}
-        // Devuelve una serie específica por su Id
-        [HttpGet("{id}")]
+        [HttpGet("Buscar{id}")]
         public IActionResult GetById(int id)
         {
-            // Buscar la serie por Id
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
-                return NotFound(); // Si no se encuentra, devuelve 404
+                return NotFound();
 
-            return Ok(serie); // Devuelve la serie encontrada
+            return Ok(serie);
         }
 
         // POST /series
-        // Agrega una nueva serie a la lista
-        [HttpPost]
+        [HttpPost("Agregar{id}")]
         public IActionResult Post(Serie nuevaSerie)
         {
-            series.Add(nuevaSerie); // Añadir la serie a la lista
-            // Devuelve 201 Created con la serie agregada
+            var errores = ValidarSerie(nuevaSerie);
+            if (errores.Any())
+            {
+                foreach (var error in errores)
+                    _logger.LogWarning("Validación fallida: {Error}", error);
+
+                return BadRequest(errores);
+            }
+
+            // Generar ID automático
+            nuevaSerie.Id = series.Any() ? series.Max(s => s.Id) + 1 : 1;
+
+            // Si Activa no se envía, por defecto es true
+            nuevaSerie.Activa = nuevaSerie.Activa;
+
+            series.Add(nuevaSerie);
+
             return CreatedAtAction(nameof(GetById), new { id = nuevaSerie.Id }, nuevaSerie);
         }
 
         // PUT /series/{id}
-        // Actualiza una serie existente
-        [HttpPut("{id}")]
+        [HttpPut("Actualizar{id}")]
         public IActionResult Put(int id, Serie serieActualizada)
         {
-            // Buscar la serie por Id
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
-                return NotFound(); // 404 si no existe
+                return NotFound();
 
-            // Actualiza los campos básicos
+            var errores = ValidarSerie(serieActualizada);
+            if (errores.Any())
+            {
+                foreach (var error in errores)
+                    _logger.LogWarning("Validación fallida: {Error}", error);
+
+                return BadRequest(errores);
+            }
+
             serie.Titulo = serieActualizada.Titulo;
             serie.Plataforma = serieActualizada.Plataforma;
             serie.AnioEstreno = serieActualizada.AnioEstreno;
             serie.Genero = serieActualizada.Genero;
             serie.Activa = serieActualizada.Activa;
-
-            // Actualiza la lista de temporadas y episodios
             serie.TemporadasEpisodios = serieActualizada.TemporadasEpisodios;
 
-            return Ok(serie); // Devuelve la serie actualizada
+            return Ok(serie);
+        }
+
+        
+        // Cambia el estado activo/inactivo de una serie
+        [HttpPatch("Activar{id}")]
+        public IActionResult CambiarEstado(int id, [FromQuery] bool activa)
+        {
+            var serie = series.FirstOrDefault(s => s.Id == id);
+            if (serie == null)
+                return NotFound();
+
+            serie.Activa = activa;
+
+            _logger.LogInformation("Serie {Id} cambiada a Activa={Activa}", id, activa);
+
+            return Ok(serie);
         }
 
         // DELETE /series/{id}
-        // Elimina una serie por Id
-        [HttpDelete("{id}")]
+        [HttpDelete("Eliminar{id}")]
         public IActionResult Delete(int id)
         {
-            // Buscar la serie por Id
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
-                return NotFound(); // 404 si no existe
+                return NotFound();
 
-            // Eliminar la serie de la lista
             series.Remove(serie);
+            return NoContent();
+        }
 
-            return NoContent(); // Devuelve 204 No Content
+        // Validación de campos de la serie y sus temporadas
+        private List<string> ValidarSerie(Serie serie)
+        {
+            var errores = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(serie.Titulo))
+                errores.Add("El título no puede estar vacío");
+
+            if (string.IsNullOrWhiteSpace(serie.Plataforma))
+                errores.Add("La plataforma no puede estar vacía");
+
+            if (serie.AnioEstreno <= 0)
+                errores.Add("El año de estreno debe ser mayor a 0");
+
+            if (string.IsNullOrWhiteSpace(serie.Genero))
+                errores.Add("El género no puede estar vacío");
+
+            if (serie.TemporadasEpisodios == null || !serie.TemporadasEpisodios.Any())
+                errores.Add("Debe tener al menos una temporada");
+
+            if (serie.TemporadasEpisodios != null)
+            {
+                foreach (var temp in serie.TemporadasEpisodios)
+                {
+                    if (temp.temporada <= 0)
+                        errores.Add($"La temporada {temp.temporada} no puede ser 0 o negativa");
+                    if (temp.Episodios <= 0)
+                        errores.Add($"La temporada {temp.temporada} debe tener al menos un episodio");
+                }
+            }
+
+            return errores;
         }
     }
 }

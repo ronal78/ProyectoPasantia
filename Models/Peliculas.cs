@@ -7,9 +7,10 @@ namespace PasantiaTI.Models
         public int Id { get; set; }
         public required string Titulo { get; set; }
         public required string Director { get; set; }
-        public string Genero { get; set; } = string.Empty;
+        public string Genero { get; set; }
         public int DuracionMinutos { get; set; }
-        public required decimal PrecioRecaudacion { get; set; }
+
+        public int PrecioRecaudacion { get; set; }
 
         public DateOnly FechaEstreno { get; set; }
         public bool Activa { get; set; }
@@ -17,8 +18,9 @@ namespace PasantiaTI.Models
         public string Duracion =>
             $"{DuracionMinutos} minutos.";
 
-        public int Antiguedad =>
-            DateTime.Now.Year - FechaEstreno.Year;
+        //Propiedad Calculada
+
+        public int Antiguedad => DateTime.Now.Year - FechaEstreno.Year;
        
     }
 }

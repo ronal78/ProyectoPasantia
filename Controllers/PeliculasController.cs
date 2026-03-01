@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using PasantiaTI.Models;
 using PasantiaTI1.Models;
 using System;
@@ -7,10 +8,18 @@ using System.Linq;
 
 namespace PasantiaTI1.Controllers
 {
-    [Route("[controller]")]
     [ApiController]
+    [Route("[controller]")]
     public class PeliculasController : ControllerBase
-    {   // lista estática que simula una "Base de datos" en memoria
+    {
+        private readonly ILogger<PeliculasController> _logger;
+
+        public PeliculasController(ILogger<PeliculasController> logger)
+        {
+            _logger = logger;
+        }
+
+        // Lista estática simulando base de datos
         private static List<Pelicula> peliculas = new()
         {
             new Pelicula
@@ -38,45 +47,77 @@ namespace PasantiaTI1.Controllers
         };
 
         // GET /peliculas
-        //Devuelve todas las peliculas
+        // Devuelve todas las películas, o filtra por Activa=true/false si se pasa en query
         [HttpGet]
-        public IActionResult Get()
-        {   // Mapear cada pelicula a peliculaDTO antes de enviarlo
-            var resultado = peliculas.Select(p => MapearADTO(p)).ToList();
+        public IActionResult Get([FromQuery] bool? activa)
+        {
+            IEnumerable<PeliculaDTO> resultado = peliculas.Select(p => MapearADTO(p));
+
+            if (activa.HasValue)
+                resultado = resultado.Where(p => p.Activa == activa.Value);
+
             return Ok(resultado);
         }
 
-        // GET /peliculas/{id}
-        // Devuelve una pelicula especifica segun su ID
-        [HttpGet("{id}")]
+        // GET /peliculas/Buscar{id}
+        [HttpGet("Buscar{id}")]
         public IActionResult GetById(int id)
-        {   // Buscar la pelicula por ID
-            var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
-            if (pelicula == null)
-                return NotFound(); //Si no se encuentra, devuelve 404
-
-            return Ok(MapearADTO(pelicula)); //Devuelve la pelicula encontrada
-        }
-
-        // POST /peliculas
-        // Agrega una nueva pelicula a la lista
-        [HttpPost]
-        public IActionResult Post(Pelicula pelicula)
         {
-            peliculas.Add(pelicula); // Añadir la nueva pelicula
-            // Devuelve 201 created con la pelicula agregada
-            return CreatedAtAction(nameof(GetById), new { id = pelicula.Id }, MapearADTO(pelicula));
-        }
-
-        // PUT /peliculas/{id}
-        // Actualiza una pelicula existente
-        [HttpPut("{id}")]
-        public IActionResult Put(int id, Pelicula peliculaActualizada)
-        {   // Buscar la pelicula por ID
             var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
             if (pelicula == null)
-                return NotFound(); // 404 si no existe
-            // Actualiza los campos de la pelicula
+            {
+                _logger.LogWarning("Película no encontrada con ID {Id}", id);
+                return NotFound(new { mensaje = "Película no encontrada" });
+            }
+
+            return Ok(MapearADTO(pelicula));
+        }
+
+        // POST /peliculas/Agregar{id}
+        // Agrega nueva película con validación de campos
+        [HttpPost("Agregar{id}")]
+        public IActionResult Add([FromBody] Pelicula nuevaPelicula)
+        {
+            var errores = ValidarPelicula(nuevaPelicula);
+
+            if (errores.Any())
+            {
+                _logger.LogError("Errores al crear película: {Errores}", string.Join(", ", errores));
+                Console.WriteLine("Errores al crear película: " + string.Join(", ", errores));
+                return BadRequest(new { errores });
+            }
+
+            int nuevoId = peliculas.Any() ? peliculas.Max(p => p.Id) + 1 : 1;
+
+            // Si Activa no se envía, por defecto true
+            nuevaPelicula.Activa = nuevaPelicula.Activa;
+
+            nuevaPelicula.Id = nuevoId;
+            peliculas.Add(nuevaPelicula);
+
+            _logger.LogInformation("Película creada correctamente con ID {Id}", nuevaPelicula.Id);
+
+            return CreatedAtAction(nameof(GetById), new { id = nuevaPelicula.Id }, MapearADTO(nuevaPelicula));
+        }
+
+        // PUT /peliculas/Actualizar{id}
+        [HttpPut("Actualizar{id}")]
+        public IActionResult Update(int id, Pelicula peliculaActualizada)
+        {
+            var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
+            if (pelicula == null)
+            {
+                _logger.LogWarning("Intento de actualizar película inexistente con ID {Id}", id);
+                return NotFound(new { mensaje = "Película no encontrada" });
+            }
+
+            var errores = ValidarPelicula(peliculaActualizada);
+            if (errores.Any())
+            {
+                _logger.LogError("Error al actualizar película: {Errores}", string.Join(", ", errores));
+                return BadRequest(errores);
+            }
+
             pelicula.Titulo = peliculaActualizada.Titulo;
             pelicula.Director = peliculaActualizada.Director;
             pelicula.Genero = peliculaActualizada.Genero;
@@ -85,26 +126,65 @@ namespace PasantiaTI1.Controllers
             pelicula.FechaEstreno = peliculaActualizada.FechaEstreno;
             pelicula.Activa = peliculaActualizada.Activa;
 
-            return Ok(MapearADTO(pelicula)); // Devuelve la pelicula actualizada
+            _logger.LogInformation("Película actualizada correctamente con ID {Id}", id);
+            return Ok(MapearADTO(pelicula));
         }
 
-        // DELETE /peliculas/{id}
-        // Elimina una pelicula por su ID
-        [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
-        {   // Buscar la pelicula por ID
+        // PATCH /peliculas/{id}/activar?activa=true/false
+        // Cambia el estado Activa de la película
+        [HttpPatch("Activar{id}")]
+        public IActionResult CambiarEstado(int id, [FromQuery] bool activa)
+        {
             var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
             if (pelicula == null)
-                return NotFound(); // 404 si no existe
+                return NotFound(new { mensaje = "Película no encontrada" });
 
-            // Eliminar la pelicula  de la lista
-            peliculas.Remove(pelicula);
+            pelicula.Activa = activa;
+            _logger.LogInformation("Película {Id} cambiada a Activa={Activa}", id, activa);
 
-            return NoContent(); // Devuelve 204 No content
+            return Ok(MapearADTO(pelicula));
         }
 
-        // Método privado para mapear Pelicula -> PeliculaDTO
-        //Convierte un Objeto pelicula a Pelicula DTO para controlar la salida
+        // DELETE /peliculas/Eliminar{id}
+        [HttpDelete("Eliminar{id}")]
+        public IActionResult Delete(int id)
+        {
+            var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
+            if (pelicula == null)
+            {
+                _logger.LogWarning("Intento de eliminar película inexistente con ID {Id}", id);
+                return NotFound(new { mensaje = "Película no encontrada" });
+            }
+
+            peliculas.Remove(pelicula);
+            _logger.LogInformation("Película eliminada correctamente con ID {Id}", id);
+            return NoContent();
+        }
+
+        // Valida los campos de una película y devuelve lista de errores
+        private List<string> ValidarPelicula(Pelicula p)
+        {
+            var errores = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(p.Titulo))
+                errores.Add("El título no puede estar vacío");
+
+            if (string.IsNullOrWhiteSpace(p.Director))
+                errores.Add("El director no puede estar vacío");
+
+            if (string.IsNullOrWhiteSpace(p.Genero))
+                errores.Add("El género no puede estar vacío");
+
+            if (p.DuracionMinutos <= 0)
+                errores.Add("La duración de minutos no debe estar vacía");
+
+            if (p.PrecioRecaudacion <= 0)
+                errores.Add("El precio de recaudación no debe estar vacío");
+
+            return errores;
+        }
+
+        // Mapear Pelicula a DTO para salida más legible
         private PeliculaDTO MapearADTO(Pelicula p)
         {
             return new PeliculaDTO
