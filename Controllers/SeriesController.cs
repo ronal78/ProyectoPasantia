@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Backend.Data.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using PasantiaTI.Models;
-using PasantiaTI1.Models;
+
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,13 +12,8 @@ namespace PasantiaTI1.Controllers
     public class SeriesController : ControllerBase
     {
         private readonly ILogger<SeriesController> _logger;
-
-        public SeriesController(ILogger<SeriesController> logger)
-        {
-            _logger = logger;
-        }
-
         // Lista de series en memoria (simula base de datos)
+
         private static List<Serie> series = new()
         {
             new Serie
@@ -56,39 +51,67 @@ namespace PasantiaTI1.Controllers
             }
         };
 
+        public SeriesController(ILogger<SeriesController> logger)
+        {
+            _logger = logger;
+        }
+
+        
+
         // GET /series
         // Devuelve todas las series o filtra por estado Activa si se pasa el query ?activa=true/false
         [HttpGet]
-        public IActionResult Get([FromQuery] bool? activa)
+        public IActionResult Get([FromQuery] bool activa)
         {
-            IEnumerable<Serie> resultado = series;
+            _logger.LogInformation("Obteniendo series con filtro Activa={Activa}", activa);
+            try
+            {
+                IEnumerable<Serie> resultado = series.Where(s => s.Activa == activa).ToList();
 
-            if (activa.HasValue)
-                resultado = resultado.Where(s => s.Activa == activa.Value);
+                return Ok(resultado);
+            }
+            catch (Exception ex)
 
-            return Ok(resultado);
+            {
+                //Loguear el error con detalles para diagnostico
+                _logger.LogError(ex, "Error al obtener las series");
+                //Devolver un mensaje generico al cliente para no exponer detalles internos
+                return StatusCode(400, "Ocurrio un error al procesar la solicitud");
+
+            }
+            
         }
 
         // GET /series/{id}
-        [HttpGet("Buscar{id}")]
+        [HttpGet("Buscar/{id}")]
         public IActionResult GetById(int id)
         {
             var serie = series.FirstOrDefault(s => s.Id == id);
-            if (serie == null)
-                return NotFound();
+
+            if (serie is null)
+            {
+                _logger.LogWarning("Serie con ID {Id} no encontrada", id);
+                return NotFound(); 
+            }
+               
 
             return Ok(serie);
         }
 
         // POST /series
-        [HttpPost("Agregar{id}")]
+        [HttpPost("Agregar")]
         public IActionResult Post(Serie nuevaSerie)
         {
             var errores = ValidarSerie(nuevaSerie);
+
             if (errores.Any())
             {
-                foreach (var error in errores)
+                _logger.LogWarning($"Intento de agregar serie con datos invalidos: {nuevaSerie.Titulo}, se ha encontrado los siguientes errores:" +
+                    $"{string.Join(",", errores )}");
+
+                /*foreach (var error in errores)
                     _logger.LogWarning("Validación fallida: {Error}", error);
+                */
 
                 return BadRequest(errores);
             }
@@ -108,6 +131,8 @@ namespace PasantiaTI1.Controllers
         [HttpPut("Actualizar{id}")]
         public IActionResult Put(int id, Serie serieActualizada)
         {
+            _logger.LogInformation("Intentando actualizar serie con ID {Id}", id);
+
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
                 return NotFound();
@@ -115,6 +140,7 @@ namespace PasantiaTI1.Controllers
             var errores = ValidarSerie(serieActualizada);
             if (errores.Any())
             {
+                //esta manera de registrar tambien esta bien 
                 foreach (var error in errores)
                     _logger.LogWarning("Validación fallida: {Error}", error);
 
@@ -128,6 +154,8 @@ namespace PasantiaTI1.Controllers
             serie.Activa = serieActualizada.Activa;
             serie.TemporadasEpisodios = serieActualizada.TemporadasEpisodios;
 
+            _logger.LogInformation("Serie {Id} actualizada exitosamente", id);
+
             return Ok(serie);
         }
 
@@ -136,9 +164,13 @@ namespace PasantiaTI1.Controllers
         [HttpPatch("Activar{id}")]
         public IActionResult CambiarEstado(int id, [FromQuery] bool activa)
         {
+            _logger.LogInformation("Intentando cambiar estado de serie con ID {ID} a Activa={Activa}", id, activa);
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
+            {
+                _logger.LogWarning("Serie con ID {Id} no encontrada para cambiar estado", id);
                 return NotFound();
+            }
 
             serie.Activa = activa;
 
@@ -153,7 +185,10 @@ namespace PasantiaTI1.Controllers
         {
             var serie = series.FirstOrDefault(s => s.Id == id);
             if (serie == null)
+            {
+                _logger.LogWarning("Serie con ID {Id} no encontrada para eliminar", id);
                 return NotFound();
+            }
 
             series.Remove(serie);
             return NoContent();

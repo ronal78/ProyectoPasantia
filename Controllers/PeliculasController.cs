@@ -51,6 +51,7 @@ namespace PasantiaTI1.Controllers
         [HttpGet]
         public IActionResult Get([FromQuery] bool? activa)
         {
+            _logger.LogInformation("Obteniendo lista de peliculas");
             IEnumerable<PeliculaDTO> resultado = peliculas.Select(p => MapearADTO(p));
 
             if (activa.HasValue)
@@ -60,9 +61,10 @@ namespace PasantiaTI1.Controllers
         }
 
         // GET /peliculas/Buscar{id}
-        [HttpGet("Buscar{id}")]
+        [HttpGet("Buscar/{id}")]
         public IActionResult GetById(int id)
         {
+            _logger.LogInformation("Buscando pelicula con ID {Id}", id);
             var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
             if (pelicula == null)
             {
@@ -75,7 +77,7 @@ namespace PasantiaTI1.Controllers
 
         // POST /peliculas/Agregar{id}
         // Agrega nueva película con validación de campos
-        [HttpPost("Agregar{id}")]
+        [HttpPost("Agregar")]
         public IActionResult Add([FromBody] Pelicula nuevaPelicula)
         {
             var errores = ValidarPelicula(nuevaPelicula);
@@ -104,6 +106,8 @@ namespace PasantiaTI1.Controllers
         [HttpPut("Actualizar{id}")]
         public IActionResult Update(int id, Pelicula peliculaActualizada)
         {
+            _logger.LogInformation("Intentando actualizar pelicula con ID {Id}", id);
+
             var pelicula = peliculas.FirstOrDefault(p => p.Id == id);
             if (pelicula == null)
             {
