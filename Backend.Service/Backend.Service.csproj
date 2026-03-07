@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Netmentor.ROP" Version="2.1.0" />
+    <PackageReference Include="Netmentor.ROP.ApiExtensions" Version="2.1.0" />
+    <PackageReference Include="Netmentor.ROP.ApiExtensions.Translations" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PasantiaTI1\Backend.Api.csproj" />
+  </ItemGroup>
+
+</Project>
