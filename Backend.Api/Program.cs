@@ -1,3 +1,9 @@
+using Backend.Api;
+using Backend.Data.Models;
+using Backend.Dependencies;
+using Backend.Service;
+using Microsoft.Extensions.Options;
+
 namespace PasantiaTI1
 {
     public class Program
@@ -13,6 +19,18 @@ namespace PasantiaTI1
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.Configure<MongoSettings>(builder.Configuration.GetSection("MongoSettings"));
+            
+            builder.Services.AddScoped(opt =>
+            {
+                var settings = opt.GetRequiredService<IOptions<MongoSettings>>().Value;
+                return new MongoDbContext(settings.ConnectionString, settings.DatabaseName);
+            });
+
+
+            builder.Services.AddScoped<ISeriesDependencies, SeriesDependencies>();
+            builder.Services.AddScoped<SeriesService>();
+            
 
             var app = builder.Build();
 
@@ -21,7 +39,7 @@ namespace PasantiaTI1
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+                
             // Configurate the HTTP request pipeline
 
             app.UseHttpsRedirection();
@@ -34,4 +52,5 @@ namespace PasantiaTI1
             app.Run();
         }
     }
+
 }

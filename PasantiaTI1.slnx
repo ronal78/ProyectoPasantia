@@ -1,9 +1,9 @@
 <Solution>
-  <Folder Name="/Aplicacion/">
-    <Project Path="Backend.Data\Backend.Data.csproj" Id="d87fc645-06ab-42cc-b89d-d09936b1a8b8" />
-    <Project Path="Backend.Dependencias\Backend.Dependencias.csproj" Id="8c307931-5e8b-45c7-8285-9cd51b6573cc" />
-    <Project Path="Backend.Service\Backend.Service.csproj" Id="6b53391e-6e21-40c0-a86b-6c16d7b38104" />
-    <Project Path="Backend.Api\Backend.Api.csproj" />
+  <Folder Name="/Backend/">
+    <Project Path="Backend.Api/Backend.Api.csproj" />
+    <Project Path="Backend.Data/Backend.Data.csproj" />
+    <Project Path="Backend.Dependencias/Backend.Dependencies.csproj" />
+    <Project Path="Backend.Service/Backend.Service.csproj" />
   </Folder>
 </Solution>
 

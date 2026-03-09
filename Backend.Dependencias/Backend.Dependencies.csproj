@@ -7,13 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Netmentor.ROP" Version="2.1.0" />
-    <PackageReference Include="Netmentor.ROP.ApiExtensions" Version="2.1.0" />
-    <PackageReference Include="Netmentor.ROP.ApiExtensions.Translations" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Backend.Data\Backend.Data.csproj" />
+    <ProjectReference Include="..\Backend.Service\Backend.Service.csproj" />
   </ItemGroup>
 
 </Project>

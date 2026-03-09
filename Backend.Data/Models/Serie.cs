@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,8 +8,10 @@ namespace Backend.Data.Models
 {
     
     public class Serie
-        {
-            public int Id { get; set; }
+    {
+            [BsonId]
+            [BsonRepresentation(BsonType.ObjectId)]
+            public required string Id { get; set; }
             public required string Titulo { get; set; }
             public string Plataforma { get; set; } = string.Empty;
             public int AnioEstreno { get; set; }

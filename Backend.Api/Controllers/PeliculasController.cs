@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Backend.Data.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using PasantiaTI.Models;
-using PasantiaTI1.Models;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
